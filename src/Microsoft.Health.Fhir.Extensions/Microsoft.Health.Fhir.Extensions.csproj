@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net6.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <LangVersion>latest</LangVersion>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Ensure.That" Version="10.1.0" />
+      <PackageReference Include="Hl7.Fhir.Serialization" Version="3.8.1" />
+      <PackageReference Include="Hl7.Fhir.Support.Poco" Version="3.8.1" />
+      <PackageReference Include="Hl7.FhirPath" Version="3.8.1" />
+      <PackageReference Include="JsonSchema.Net" Version="2.2.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="ValueSets" />
+    </ItemGroup>
+
+</Project>

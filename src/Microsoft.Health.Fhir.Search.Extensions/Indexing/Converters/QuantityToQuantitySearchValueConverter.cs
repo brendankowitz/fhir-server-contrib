@@ -1,0 +1,40 @@
+﻿// -------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
+// -------------------------------------------------------------------------------------------------
+
+using Hl7.Fhir.ElementModel;
+using Hl7.FhirPath;
+using Microsoft.Health.Fhir.Search.Extensions.Indexing.SearchValues;
+
+namespace Microsoft.Health.Fhir.Search.Extensions.Indexing.Converters
+{
+    /// <summary>
+    /// A converter used to convert from <see cref="Quantity"/> to a list of <see cref="QuantitySearchValue"/>.
+    /// </summary>
+    public class QuantityToQuantitySearchValueConverter : FhirTypedElementToSearchValueConverter<QuantitySearchValue>
+    {
+        public QuantityToQuantitySearchValueConverter()
+            : base("Quantity", "System.Quantity")
+        {
+        }
+
+        protected override IEnumerable<ISearchValue> Convert(ITypedElement value)
+        {
+            var decimalValue = (decimal?)value.Scalar("value");
+
+            if (!decimalValue.HasValue)
+            {
+                yield break;
+            }
+
+            var system = value.Scalar("system")?.ToString();
+            var code = value.Scalar("code")?.ToString();
+
+            yield return new QuantitySearchValue(
+                system,
+                code,
+                decimalValue.GetValueOrDefault());
+        }
+    }
+}
