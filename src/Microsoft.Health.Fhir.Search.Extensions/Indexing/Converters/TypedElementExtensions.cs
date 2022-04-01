@@ -1,6 +1,6 @@
 ﻿// -------------------------------------------------------------------------------------------------
-// Copyright (c) Microsoft Corporation. All rights reserved.
-// Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
+// Copyright (c) Microsoft Corporation.All rights reserved.
+// Licensed under the MIT License (MIT).See LICENSE in the repo root for license information.
 // -------------------------------------------------------------------------------------------------
 
 using EnsureThat;
@@ -8,36 +8,30 @@ using Hl7.Fhir.ElementModel;
 using Hl7.FhirPath;
 using Microsoft.Health.Fhir.Search.Extensions.Indexing.SearchValues;
 
-namespace Microsoft.Health.Fhir.Search.Extensions.Indexing.Converters
+namespace Microsoft.Health.Fhir.Search.Extensions.Indexing.Converters;
+
+internal static class TypedElementExtensions
 {
-    internal static class TypedElementExtensions
+    public static TokenSearchValue ToTokenSearchValue(this ITypedElement coding)
     {
-        public static TokenSearchValue ToTokenSearchValue(this ITypedElement coding)
-        {
-            EnsureArg.IsNotNull(coding, nameof(coding));
+        EnsureArg.IsNotNull(coding, nameof(coding));
 
-            string system = coding.Scalar("system") as string;
-            string code = coding.Scalar("code") as string;
-            string display = coding.Scalar("display") as string;
+        string system = coding.Scalar("system") as string;
+        string code = coding.Scalar("code") as string;
+        string display = coding.Scalar("display") as string;
 
-            if (!string.IsNullOrWhiteSpace(system) ||
-                !string.IsNullOrWhiteSpace(code) ||
-                !string.IsNullOrWhiteSpace(display))
-            {
-                return new TokenSearchValue(system, code, display);
-            }
+        if (!string.IsNullOrWhiteSpace(system) ||
+            !string.IsNullOrWhiteSpace(code) ||
+            !string.IsNullOrWhiteSpace(display))
+            return new TokenSearchValue(system, code, display);
 
-            return null;
-        }
+        return null;
+    }
 
-        public static IEnumerable<string> AsStringValues(this IEnumerable<ITypedElement> elements)
-        {
-            if (elements == null)
-            {
-                return Enumerable.Empty<string>();
-            }
+    public static IEnumerable<string> AsStringValues(this IEnumerable<ITypedElement> elements)
+    {
+        if (elements == null) return Enumerable.Empty<string>();
 
-            return elements.Select(x => x.Value as string).Where(x => !string.IsNullOrWhiteSpace(x));
-        }
+        return elements.Select(x => x.Value as string).Where(x => !string.IsNullOrWhiteSpace(x));
     }
 }

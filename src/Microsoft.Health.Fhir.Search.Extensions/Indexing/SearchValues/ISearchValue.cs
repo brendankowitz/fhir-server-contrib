@@ -1,24 +1,23 @@
 ﻿// -------------------------------------------------------------------------------------------------
-// Copyright (c) Microsoft Corporation. All rights reserved.
-// Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
+// Copyright (c) Microsoft Corporation.All rights reserved.
+// Licensed under the MIT License (MIT).See LICENSE in the repo root for license information.
 // -------------------------------------------------------------------------------------------------
 
-namespace Microsoft.Health.Fhir.Search.Extensions.Indexing.SearchValues
+namespace Microsoft.Health.Fhir.Search.Extensions.Indexing.SearchValues;
+
+/// <summary>
+/// Represents a search value.
+/// </summary>
+public interface ISearchValue : IEquatable<ISearchValue>
 {
     /// <summary>
-    /// Represents a search value.
+    /// Gets a flag indicating whether the search value is valid as a composite component or not.
     /// </summary>
-    public interface ISearchValue : IEquatable<ISearchValue>
-    {
-        /// <summary>
-        /// Gets a flag indicating whether the search value is valid as a composite component or not.
-        /// </summary>
-        bool IsValidAsCompositeComponent { get; }
+    bool IsValidAsCompositeComponent { get; }
 
-        /// <summary>
-        /// Accepts the visitor.
-        /// </summary>
-        /// <param name="visitor">The visitor.</param>
-        void AcceptVisitor(ISearchValueVisitor visitor);
-    }
+    /// <summary>
+    /// Accepts the visitor.
+    /// </summary>
+    /// <param name="visitor">The visitor.</param>
+    void AcceptVisitor(ISearchValueVisitor visitor);
 }

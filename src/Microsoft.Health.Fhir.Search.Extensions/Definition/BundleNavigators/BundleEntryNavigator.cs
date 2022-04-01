@@ -1,28 +1,24 @@
 ﻿// -------------------------------------------------------------------------------------------------
-// Copyright (c) Microsoft Corporation. All rights reserved.
-// Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
+// Copyright (c) Microsoft Corporation.All rights reserved.
+// Licensed under the MIT License (MIT).See LICENSE in the repo root for license information.
 // -------------------------------------------------------------------------------------------------
 
 using EnsureThat;
 using Hl7.Fhir.ElementModel;
 using Hl7.FhirPath;
 
-namespace Microsoft.Health.Fhir.Search.Extensions.Definition.BundleNavigators
+namespace Microsoft.Health.Fhir.Search.Extensions.Definition.BundleNavigators;
+
+internal class BundleEntryNavigator
 {
-    internal class BundleEntryNavigator
+    private readonly Lazy<ITypedElement> _entry;
+
+    internal BundleEntryNavigator(ITypedElement entry)
     {
-        private readonly Lazy<ITypedElement> _entry;
+        EnsureArg.IsNotNull(entry, nameof(entry));
 
-        internal BundleEntryNavigator(ITypedElement entry)
-        {
-            EnsureArg.IsNotNull(entry, nameof(entry));
-
-            _entry = new Lazy<ITypedElement>(() => entry.Select("resource").FirstOrDefault());
-        }
-
-        public ITypedElement Resource
-        {
-            get => _entry.Value;
-        }
+        _entry = new Lazy<ITypedElement>(() => entry.Select("resource").FirstOrDefault());
     }
+
+    public ITypedElement Resource => _entry.Value;
 }

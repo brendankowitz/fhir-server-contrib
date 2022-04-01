@@ -1,4 +1,9 @@
-﻿namespace Microsoft.Health.Fhir.Extensions.Extensions;
+﻿// -------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.All rights reserved.
+// Licensed under the MIT License (MIT).See LICENSE in the repo root for license information.
+// -------------------------------------------------------------------------------------------------
+
+namespace Microsoft.Health.Fhir.Extensions.Extensions;
 
 public static class DecimalExtensions
 {
@@ -12,13 +17,10 @@ public static class DecimalExtensions
     {
         // http://csharpindepth.com/Articles/General/Decimal.aspx
         // Exponents are stored in the third byte of the fourth integer
-        var digitsBehindDecimal = BitConverter.GetBytes(decimal.GetBits(d)[3])[2];
+        byte digitsBehindDecimal = BitConverter.GetBytes(decimal.GetBits(d)[3])[2];
 
         // Exponents are limited to 28 decimal digits in most cases, so we can't modify the value further
-        if (digitsBehindDecimal >= 28)
-        {
-            return 0;
-        }
+        if (digitsBehindDecimal >= 28) return 0;
 
         // We want to create a decimal value that has the value of 5 one decimal digit further from 0
         return new decimal(5, 0, 0, false, (byte)(digitsBehindDecimal + 1));

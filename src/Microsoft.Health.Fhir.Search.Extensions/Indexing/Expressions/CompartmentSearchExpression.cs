@@ -1,60 +1,59 @@
 ﻿// -------------------------------------------------------------------------------------------------
-// Copyright (c) Microsoft Corporation. All rights reserved.
-// Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
+// Copyright (c) Microsoft Corporation.All rights reserved.
+// Licensed under the MIT License (MIT).See LICENSE in the repo root for license information.
 // -------------------------------------------------------------------------------------------------
 
 using EnsureThat;
 
-namespace Microsoft.Health.Fhir.Search.Extensions.Indexing.Expressions
+namespace Microsoft.Health.Fhir.Search.Extensions.Indexing.Expressions;
+
+/// <summary>
+/// Represents an expression for search performed for a compartment.
+/// </summary>
+public class CompartmentSearchExpression : Expression
 {
     /// <summary>
-    /// Represents an expression for search performed for a compartment.
+    /// Initializes a new instance of the <see cref="CompartmentSearchExpression"/> class.
     /// </summary>
-    public class CompartmentSearchExpression : Expression
+    /// <param name="compartmentType">The compartment type.</param>
+    /// <param name="compartmentId">The compartment id.</param>
+    public CompartmentSearchExpression(string compartmentType, string compartmentId)
     {
-        /// <summary>
-        /// Initializes a new instance of the <see cref="CompartmentSearchExpression"/> class.
-        /// </summary>
-        /// <param name="compartmentType">The compartment type.</param>
-        /// <param name="compartmentId">The compartment id.</param>
-        public CompartmentSearchExpression(string compartmentType, string compartmentId)
-        {
-            EnsureArg.IsNotNullOrWhiteSpace(compartmentId, nameof(compartmentId));
+        EnsureArg.IsNotNullOrWhiteSpace(compartmentId, nameof(compartmentId));
 
-            CompartmentType = compartmentType;
-            CompartmentId = compartmentId;
-        }
+        CompartmentType = compartmentType;
+        CompartmentId = compartmentId;
+    }
 
-        /// <summary>
-        /// The compartment type.
-        /// </summary>
-        public string CompartmentType { get; }
+    /// <summary>
+    /// The compartment type.
+    /// </summary>
+    public string CompartmentType { get; }
 
-        /// <summary>
-        /// The compartment id.
-        /// </summary>
-        public string CompartmentId { get; }
+    /// <summary>
+    /// The compartment id.
+    /// </summary>
+    public string CompartmentId { get; }
 
-        public override TOutput AcceptVisitor<TContext, TOutput>(IExpressionVisitor<TContext, TOutput> visitor, TContext context)
-        {
-            EnsureArg.IsNotNull(visitor, nameof(visitor));
-            return visitor.VisitCompartment(this, context);
-        }
+    public override TOutput AcceptVisitor<TContext, TOutput>(IExpressionVisitor<TContext, TOutput> visitor, TContext context)
+    {
+        EnsureArg.IsNotNull(visitor, nameof(visitor));
+        return visitor.VisitCompartment(this, context);
+    }
 
-        public override string ToString()
-        {
-            return $"(Compartment {CompartmentType} '{CompartmentId}')";
-        }
+    public override string ToString()
+    {
+        return $"(Compartment {CompartmentType} '{CompartmentId}')";
+    }
 
-        public override void AddValueInsensitiveHashCode(ref HashCode hashCode)
-        {
-            hashCode.Add(typeof(CompartmentSearchExpression));
-            hashCode.Add(CompartmentType);
-        }
+    public override void AddValueInsensitiveHashCode(ref HashCode hashCode)
+    {
+        hashCode.Add(typeof(CompartmentSearchExpression));
+        hashCode.Add(CompartmentType);
+    }
 
-        public override bool ValueInsensitiveEquals(Expression other)
-        {
-            return other is CompartmentSearchExpression compartmentSearch && compartmentSearch.CompartmentType == CompartmentType;
-        }
+    public override bool ValueInsensitiveEquals(Expression other)
+    {
+        return other is CompartmentSearchExpression compartmentSearch && compartmentSearch.CompartmentType == CompartmentType;
     }
 }

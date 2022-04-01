@@ -2,7 +2,11 @@
     "url": "/metadata",
     "version": "1.0.0.0",
     "name": "Microsoft FHIR Server",
-    "status": [ "draft", "active", "retired" ],
+    "status": [
+        "draft",
+        "active",
+        "retired"
+    ],
     "experimental": true,
     "publisher": "Microsoft",
     "contact": [
@@ -15,7 +19,9 @@
             ]
         }
     ],
-    "kind": [ "capability" ],
+    "kind": [
+        "capability"
+    ],
     "format": [
         "application/fhir+json",
         "json"

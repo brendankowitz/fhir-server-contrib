@@ -1,21 +1,20 @@
 ﻿// -------------------------------------------------------------------------------------------------
-// Copyright (c) Microsoft Corporation. All rights reserved.
-// Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
+// Copyright (c) Microsoft Corporation.All rights reserved.
+// Licensed under the MIT License (MIT).See LICENSE in the repo root for license information.
 // -------------------------------------------------------------------------------------------------
 
-namespace Microsoft.Health.Fhir.Search.Extensions.Indexing.Expressions
+namespace Microsoft.Health.Fhir.Search.Extensions.Indexing.Expressions;
+
+/// <summary>
+/// Represents the binary operator.
+/// Note that we rely on the relative order of the values in DateTimeBoundedRangeRewriter.
+/// </summary>
+public enum BinaryOperator
 {
-    /// <summary>
-    /// Represents the binary operator.
-    /// Note that we rely on the relative order of the values in DateTimeBoundedRangeRewriter.
-    /// </summary>
-    public enum BinaryOperator
-    {
-        Equal = 0,
-        GreaterThan = 1,
-        GreaterThanOrEqual = 2,
-        LessThan = 3,
-        LessThanOrEqual = 4,
-        NotEqual = 5,
-    }
+    Equal = 0,
+    GreaterThan = 1,
+    GreaterThanOrEqual = 2,
+    LessThan = 3,
+    LessThanOrEqual = 4,
+    NotEqual = 5
 }

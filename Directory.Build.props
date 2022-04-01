@@ -1,0 +1,49 @@
+<Project>
+
+  <!-- Nuget related properties.-->
+  <PropertyGroup>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <Product>Microsoft FHIR Server for Azure</Product>
+    <RepositoryUrl>https://github.com/microsoft/fhir-server/</RepositoryUrl>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <WarningsAsErrors/>
+    <!-- allow pre-release dependencies -->
+    <NoWarn>$(NoWarn);NU5104;SA1623;SA1200;SA1600;SA1101;CA1034;CA1054;CA1812;CA1822;CA1062;CA1305;CA2201;CA1508;CA1056;CA1031</NoWarn>
+    <DebugType>Portable</DebugType>
+    <LangVersion>latest</LangVersion>
+    <HighEntropyVA>true</HighEntropyVA>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <CLRSupport>true</CLRSupport>
+    <Authors>Microsoft Health Team</Authors>
+    <AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
+    <Company>Microsoft Corporation</Company>
+    <Copyright>Copyright © Microsoft Corporation. All rights reserved.</Copyright>
+    <Deterministic>true</Deterministic>
+    <!--This will target the latest patch release of the runtime released with the current SDK.  -->
+    <TargetLatestRuntimePatch>true</TargetLatestRuntimePatch>
+
+    <AnalysisLevel>latest-All</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+  </PropertyGroup>
+  <!-- Shared dependencies versions.-->
+  <PropertyGroup>
+    <RuntimePackageVersion>6.0</RuntimePackageVersion>
+    <AspNetPackageVersion>6.0.1</AspNetPackageVersion>
+    <HealthcareSharedPackageVersion>4.0.28</HealthcareSharedPackageVersion>
+    <Hl7FhirVersion>3.8.1</Hl7FhirVersion>
+  </PropertyGroup>
+
+  <Choose>
+    <When Condition="$(MSBuildProjectName.Contains('Test'))">
+      <PropertyGroup>
+        <IsPackable>false</IsPackable>
+      </PropertyGroup>
+      <ItemGroup>
+        <Compile Include="$(RootDirectory)GlobalSuppressions.Test.cs" Visible="false"/>
+      </ItemGroup>
+    </When>
+  </Choose>
+
+
+</Project>

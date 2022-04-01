@@ -1,6 +1,6 @@
 ﻿// -------------------------------------------------------------------------------------------------
-// Copyright (c) Microsoft Corporation. All rights reserved.
-// Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
+// Copyright (c) Microsoft Corporation.All rights reserved.
+// Licensed under the MIT License (MIT).See LICENSE in the repo root for license information.
 // -------------------------------------------------------------------------------------------------
 
 using System.Diagnostics.CodeAnalysis;
@@ -11,137 +11,115 @@ using EnsureThat;
 using Microsoft.Health.Fhir.Extensions;
 using Microsoft.Health.Fhir.Extensions.Schema;
 
-namespace Microsoft.Health.Fhir.Search.Extensions.Indexing.SearchValues
+namespace Microsoft.Health.Fhir.Search.Extensions.Indexing.SearchValues;
+
+/// <summary>
+/// Represents an URI search value.
+/// </summary>
+public class UriSearchValue : ISearchValue
 {
+    private const string UrlGroupName = "url";
+    private const string FragmentGroupName = "fragment";
+    private const string VersionGroupName = "version";
+
+    private static readonly Regex _canonicalFormat = new($"^(?<{UrlGroupName}>[\\w\\-\\._~:/?[\\]@!\\$&'\\(\\)\\*\\+,;=.]+)(?<{VersionGroupName}>\\|[\\w\\-\\._:]+)?(?<{FragmentGroupName}>\\#[\\w\\-\\._:]+)?$", RegexOptions.Compiled);
+
     /// <summary>
-    /// Represents an URI search value.
+    /// Initializes a new instance of the <see cref="UriSearchValue"/> class.
     /// </summary>
-    public class UriSearchValue : ISearchValue
+    /// <param name="uri">The URI value.</param>
+    /// <param name="separateCanonicalComponents">When true, the Version and Fragment will be separated into Canonical components</param>
+    [SuppressMessage("Design", "CA1054:Uri parameters should not be strings", Justification = "Value is passed in from user")]
+    public UriSearchValue(string uri, bool separateCanonicalComponents)
     {
-        private const string UrlGroupName = "url";
-        private const string FragmentGroupName = "fragment";
-        private const string VersionGroupName = "version";
+        EnsureArg.IsNotNullOrWhiteSpace(uri, nameof(uri));
+        Match result;
 
-        private static readonly Regex _canonicalFormat = new Regex($"^(?<{UrlGroupName}>[\\w\\-\\._~:/?[\\]@!\\$&'\\(\\)\\*\\+,;=.]+)(?<{VersionGroupName}>\\|[\\w\\-\\._:]+)?(?<{FragmentGroupName}>\\#[\\w\\-\\._:]+)?$", RegexOptions.Compiled);
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="UriSearchValue"/> class.
-        /// </summary>
-        /// <param name="uri">The URI value.</param>
-        /// <param name="separateCanonicalComponents">When true, the Version and Fragment will be separated into Canonical components</param>
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1054:Uri parameters should not be strings", Justification = "Value is passed in from user")]
-        public UriSearchValue(string uri, bool separateCanonicalComponents)
+        if (!separateCanonicalComponents || !(result = _canonicalFormat.Match(uri)).Success)
         {
-            EnsureArg.IsNotNullOrWhiteSpace(uri, nameof(uri));
-            Match result;
-
-            if (!separateCanonicalComponents || !(result = _canonicalFormat.Match(uri)).Success)
-            {
-                Uri = uri;
-                return;
-            }
-
-            // More information: https://www.hl7.org/fhir/references.html#canonical-fragments
-            // Parse url in format of:
-            // http://example.com/folder|4#fragment
-
-            Uri = ValueWhenNotNullOrWhiteSpace(result.Groups[UrlGroupName].Value);
-            Fragment = ValueWhenNotNullOrWhiteSpace(result.Groups[FragmentGroupName].Value?.TrimStart('#'));
-            Version = ValueWhenNotNullOrWhiteSpace(result.Groups[VersionGroupName].Value?.TrimStart('|'));
-
-            string ValueWhenNotNullOrWhiteSpace(string value)
-            {
-                if (!string.IsNullOrWhiteSpace(value))
-                {
-                    return value;
-                }
-
-                return null;
-            }
+            Uri = uri;
+            return;
         }
 
-        /// <summary>
-        /// Gets the URI value.
-        /// </summary>
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1056:URI properties should not be strings", Justification = "Value is passed in from user")]
-        public string Uri { get; protected set; }
+        // More information: https://www.hl7.org/fhir/references.html#canonical-fragments
+        // Parse url in format of:
+        // http://example.com/folder|4#fragment
 
-        public string Version { get; set; }
+        Uri = ValueWhenNotNullOrWhiteSpace(result.Groups[UrlGroupName].Value);
+        Fragment = ValueWhenNotNullOrWhiteSpace(result.Groups[FragmentGroupName].Value?.TrimStart('#'));
+        Version = ValueWhenNotNullOrWhiteSpace(result.Groups[VersionGroupName].Value?.TrimStart('|'));
 
-        public string Fragment { get; set; }
-
-        /// <summary>
-        /// When true the search value has Canonical components Uri, Version and/or Fragment.
-        /// When false the search value contains only Uri.
-        /// </summary>
-        public bool IsCanonical
+        string ValueWhenNotNullOrWhiteSpace(string value)
         {
-            get
-            {
-                return !string.IsNullOrWhiteSpace(Version) || !string.IsNullOrWhiteSpace(Fragment);
-            }
+            if (!string.IsNullOrWhiteSpace(value)) return value;
+
+            return null;
         }
+    }
 
-        /// <inheritdoc />
-        public bool IsValidAsCompositeComponent => true;
+    /// <summary>
+    /// Gets the URI value.
+    /// </summary>
+    [SuppressMessage("Design", "CA1056:URI properties should not be strings", Justification = "Value is passed in from user")]
+    public string Uri { get; protected set; }
 
-        /// <summary>
-        /// Parses the string value to an instance of <see cref="UriSearchValue"/>.
-        /// </summary>
-        /// <param name="s">The string to be parsed.</param>
-        /// <param name="separateCanonicalComponents">When true, the Version and Fragment will be separated into Canonical components</param>
-        /// <param name="modelInfoProvider">FHIR Model Info provider</param>
-        /// <returns>An instance of <see cref="UriSearchValue"/>.</returns>
-        public static UriSearchValue Parse(string s, bool separateCanonicalComponents, IFhirSchemaProvider modelInfoProvider)
-        {
-            EnsureArg.IsNotNullOrWhiteSpace(s, nameof(s));
-            EnsureArg.IsNotNull(modelInfoProvider, nameof(modelInfoProvider));
+    public string Version { get; set; }
 
-            if (modelInfoProvider.Version == FhirSpecification.Stu3 || !_canonicalFormat.IsMatch(s))
-            {
-                return new UriSearchValue(s, false);
-            }
+    public string Fragment { get; set; }
 
-            return new UriSearchValue(s, separateCanonicalComponents);
-        }
+    /// <summary>
+    /// When true the search value has Canonical components Uri, Version and/or Fragment.
+    /// When false the search value contains only Uri.
+    /// </summary>
+    public bool IsCanonical => !string.IsNullOrWhiteSpace(Version) || !string.IsNullOrWhiteSpace(Fragment);
 
-        /// <inheritdoc />
-        public virtual void AcceptVisitor(ISearchValueVisitor visitor)
-        {
-            EnsureArg.IsNotNull(visitor, nameof(visitor));
+    /// <inheritdoc />
+    public bool IsValidAsCompositeComponent => true;
 
-            visitor.Visit(this);
-        }
+    /// <inheritdoc />
+    public virtual void AcceptVisitor(ISearchValueVisitor visitor)
+    {
+        EnsureArg.IsNotNull(visitor, nameof(visitor));
 
-        public virtual bool Equals([AllowNull] ISearchValue other)
-        {
-            var uriSearchValueOther = other as UriSearchValue;
+        visitor.Visit(this);
+    }
 
-            if (uriSearchValueOther == null)
-            {
-                return false;
-            }
+    public virtual bool Equals([AllowNull] ISearchValue other)
+    {
+        var uriSearchValueOther = other as UriSearchValue;
 
-            // URLs are always considered to be case-sensitive (https://www.hl7.org/fhir/references.html#literal)
-            return string.Equals(ToString(), uriSearchValueOther.ToString(), StringComparison.Ordinal);
-        }
+        if (uriSearchValueOther == null) return false;
 
-        /// <inheritdoc />
-        public override string ToString()
-        {
-            var asString = new StringBuilder(Uri);
+        // URLs are always considered to be case-sensitive (https://www.hl7.org/fhir/references.html#literal)
+        return string.Equals(ToString(), uriSearchValueOther.ToString(), StringComparison.Ordinal);
+    }
 
-            if (!string.IsNullOrEmpty(Version))
-            {
-                asString.AppendFormat(CultureInfo.InvariantCulture, "|{0}", Version);
-            }
+    /// <summary>
+    /// Parses the string value to an instance of <see cref="UriSearchValue"/>.
+    /// </summary>
+    /// <param name="s">The string to be parsed.</param>
+    /// <param name="separateCanonicalComponents">When true, the Version and Fragment will be separated into Canonical components</param>
+    /// <param name="modelInfoProvider">FHIR Model Info provider</param>
+    /// <returns>An instance of <see cref="UriSearchValue"/>.</returns>
+    public static UriSearchValue Parse(string s, bool separateCanonicalComponents, IFhirSchemaProvider modelInfoProvider)
+    {
+        EnsureArg.IsNotNullOrWhiteSpace(s, nameof(s));
+        EnsureArg.IsNotNull(modelInfoProvider, nameof(modelInfoProvider));
 
-            if (!string.IsNullOrEmpty(Fragment))
-            {
-                asString.AppendFormat(CultureInfo.InvariantCulture, "#{0}", Fragment);
-            }
+        if (modelInfoProvider.Version == FhirSpecification.Stu3 || !_canonicalFormat.IsMatch(s)) return new UriSearchValue(s, false);
 
-            return asString.ToString();
-        }
+        return new UriSearchValue(s, separateCanonicalComponents);
+    }
+
+    /// <inheritdoc />
+    public override string ToString()
+    {
+        var asString = new StringBuilder(Uri);
+
+        if (!string.IsNullOrEmpty(Version)) asString.AppendFormat(CultureInfo.InvariantCulture, "|{0}", Version);
+
+        if (!string.IsNullOrEmpty(Fragment)) asString.AppendFormat(CultureInfo.InvariantCulture, "#{0}", Fragment);
+
+        return asString.ToString();
     }
 }

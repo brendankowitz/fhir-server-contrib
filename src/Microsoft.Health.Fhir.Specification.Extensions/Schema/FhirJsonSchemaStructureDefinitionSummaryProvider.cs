@@ -1,4 +1,9 @@
-﻿using System.Collections.Immutable;
+﻿// -------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.All rights reserved.
+// Licensed under the MIT License (MIT).See LICENSE in the repo root for license information.
+// -------------------------------------------------------------------------------------------------
+
+using System.Collections.Immutable;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json;
 using Hl7.Fhir.Specification;
@@ -18,18 +23,20 @@ public class FhirJsonSchemaStructureDefinitionSummaryProvider : IStructureDefini
 
     public IReadOnlySet<string> ResourceTypeNames { get; }
 
-    private IDictionary<string, IStructureDefinitionSummary> Types = new Dictionary<string, IStructureDefinitionSummary>();
+    private readonly IDictionary<string, IStructureDefinitionSummary> Types = new Dictionary<string, IStructureDefinitionSummary>();
 
     public FhirJsonSchemaStructureDefinitionSummaryProvider(FhirSpecification fhirSpecification)
     {
         Version = fhirSpecification;
 
-        JsonSchema schema = JsonSchema
-            .FromStream(DataLoader.OpenVersionedFileStream(fhirSpecification, "fhir.schema.json")).Result;
+#pragma warning disable CA2012
+        using Stream openVersionedFileStream = DataLoader.OpenVersionedFileStream(fhirSpecification, "fhir.schema.json");
+        JsonSchema schema = JsonSchema.FromStream(openVersionedFileStream).Result;
+#pragma warning restore CA2012
 
-        var definitions = schema.Keywords.OfType<DefinitionsKeyword>().Single();
+        DefinitionsKeyword definitions = schema.Keywords.OfType<DefinitionsKeyword>().Single();
 
-        var resourcesList = definitions.Definitions[SchemaStructureDefinitionSummary.ResourceListName];
+        JsonSchema resourcesList = definitions.Definitions[SchemaStructureDefinitionSummary.ResourceListName];
 
         var resourceTypesLookup = resourcesList.Keywords.OfType<OneOfKeyword>().Single().Schemas
             .Select(x => definitions.Definitions.Lookup(x))
@@ -42,22 +49,19 @@ public class FhirJsonSchemaStructureDefinitionSummaryProvider : IStructureDefini
             Definitions = definitions.Definitions,
             ResourceTypesLookup = resourceTypesLookup,
             FullSchema = schema,
-            StructureDefinitionSummaries = Types,
+            StructureDefinitionSummaries = Types
         };
 
-        var extensionName = "Extension";
-        var extension = definitions.Definitions[extensionName];
+        string extensionName = "Extension";
+        JsonSchema extension = definitions.Definitions[extensionName];
         var extensionStructureDefinition = new SchemaStructureDefinitionSummary(extensionName, false, false, extension, 0, context);
         Types[extensionName] = extensionStructureDefinition;
         context.Extension = extensionStructureDefinition;
 
-        foreach (var definition in definitions.Definitions)
+        foreach (KeyValuePair<string, JsonSchema> definition in definitions.Definitions)
         {
-            var key = definition.Key.Replace("_", "#");
-            if (Types.ContainsKey(key))
-            {
-                continue;
-            }
+            string key = definition.Key.Replace("_", "#", StringComparison.Ordinal);
+            if (Types.ContainsKey(key)) continue;
 
             Types.Add(key, new SchemaStructureDefinitionSummary(definition.Key, false, resourceTypesLookup.ContainsKey(definition.Key), definition.Value, 0, context));
         }
@@ -79,7 +83,7 @@ public class FhirJsonSchemaStructureDefinitionSummaryProvider : IStructureDefini
     {
         public IReadOnlyDictionary<string, JsonSchema> Definitions { get; set; }
 
-        public IReadOnlyDictionary<string, JsonSchema> ResourceTypesLookup  { get; set; }
+        public IReadOnlyDictionary<string, JsonSchema> ResourceTypesLookup { get; set; }
 
         public JsonSchema FullSchema { get; set; }
 
@@ -118,22 +122,14 @@ public class FhirJsonSchemaStructureDefinitionSummaryProvider : IStructureDefini
             IStructureDefinitionSummary propertyStructureDefinition = null;
             if (propDefinition != null)
             {
-                var key = $"{propDefinition.Value.Name.Replace("_", "#")}";
-                var typeName = propDefinition.Value.Schema.Keywords.OfType<TypeKeyword>().SingleOrDefault();
+                string key = $"{propDefinition.Value.Name.Replace("_", "#", StringComparison.Ordinal)}";
+                TypeKeyword typeName = propDefinition.Value.Schema.Keywords.OfType<TypeKeyword>().SingleOrDefault();
 
                 if (StructureDefinitionSummaries.ContainsKey(key))
-                {
                     propertyStructureDefinition = StructureDefinitionSummaries[key];
-                }
-                else if (typeName != null)
-                {
-                    propertyStructureDefinition = GetOrCreateSimplePropertyStructureDefinition(key);
-                }
+                else if (typeName != null) propertyStructureDefinition = GetOrCreateSimplePropertyStructureDefinition(key);
 
-                if (string.Equals("Extension", key) && propertyStructureDefinition == null)
-                {
-                    return Extension;
-                }
+                if (string.Equals("Extension", key, StringComparison.Ordinal) && propertyStructureDefinition == null) return Extension;
 
                 if (level < 10 && !parentDefinition.Equals(propDefinition?.Schema) && propertyStructureDefinition == null)
                 {
@@ -184,9 +180,8 @@ public class FhirJsonSchemaStructureDefinitionSummaryProvider : IStructureDefini
     private class SchemaStructureDefinitionSummary : IStructureDefinitionSummary, IValidatableObject
     {
         private readonly JsonSchema _definition;
-        private readonly Context _context;
 
-        private IReadOnlyCollection<IElementDefinitionSummary> _elements;
+        private readonly IReadOnlyCollection<IElementDefinitionSummary> _elements;
         private readonly JsonSchema _fullSchema;
         internal const string ResourceListName = "ResourceList";
 
@@ -199,42 +194,32 @@ public class FhirJsonSchemaStructureDefinitionSummaryProvider : IStructureDefini
             Context context)
         {
             _definition = definition;
-            _context = context;
-            TypeName = typeName?.Replace("_", "#");
+            TypeName = typeName?.Replace("_", "#", StringComparison.Ordinal);
             IsAbstract = isAbstract;
             IsResource = isResource;
             _fullSchema = context.FullSchema;
 
             ISet<IElementDefinitionSummary> elements = new HashSet<IElementDefinitionSummary>();
 
-            var required = definition?.Keywords.OfType<RequiredKeyword>().SingleOrDefault();
-            var propertiesKeyword = definition?.Keywords.OfType<PropertiesKeyword>().SingleOrDefault();
+            RequiredKeyword required = definition?.Keywords.OfType<RequiredKeyword>().SingleOrDefault();
+            PropertiesKeyword propertiesKeyword = definition?.Keywords.OfType<PropertiesKeyword>().SingleOrDefault();
 
-            Dictionary<string, JsonSchema> properties = new Dictionary<string, JsonSchema>();
+            var properties = new Dictionary<string, JsonSchema>();
             if (propertiesKeyword != null)
-            {
-                foreach (var schema in propertiesKeyword.Properties)
-                {
+                foreach (KeyValuePair<string, JsonSchema> schema in propertiesKeyword.Properties)
                     properties.Add(schema.Key, schema.Value);
-                }
-            }
 
             if (properties.Any())
-            {
-                foreach (var element in properties
+                foreach ((IGrouping<string, KeyValuePair<string, JsonSchema>> value, int i) element in properties
                              .GroupBy(x => x.Key.Trim('_'))
-                             .Select(((value, i) => (value, i))))
+                             .Select((value, i) => (value, i)))
                 {
-                    var property = ProcessProperty(definition, required, (element.value.First(), element.i), level, context);
+                    SchemaElementDefinitionSummary property = ProcessProperty(definition, required, (element.value.First(), element.i), level, context);
 
                     elements.Add(property);
                 }
-            }
 
-            if (!properties.Any(x => string.Equals("extension", x.Key)) && context.Extension != null)
-            {
-                elements.Add(new ElementDefinitionSummary("extension", true, false, false, XmlRepresentation.XmlElement, new[] { context.Extension }, 0, null, false, false));
-            }
+            if (!properties.Any(x => string.Equals("extension", x.Key, StringComparison.Ordinal)) && context.Extension != null) elements.Add(new ElementDefinitionSummary("extension", true, false, false, XmlRepresentation.XmlElement, new[] { context.Extension }, 0, null, false, false));
 
             _elements = elements.ToImmutableArray();
         }
@@ -246,50 +231,44 @@ public class FhirJsonSchemaStructureDefinitionSummaryProvider : IStructureDefini
             int level,
             Context context)
         {
-            var isRequired = required?.Properties.Contains(element.value.Key) == true;
-            var propDefinition = context.Definitions.Lookup(element.value.Value);
+            bool isRequired = required?.Properties.Contains(element.value.Key) == true;
+            (string Name, JsonSchema Schema)? propDefinition = context.Definitions.Lookup(element.value.Value);
 
-            var propIsResource =
+            bool propIsResource =
                 propDefinition != null && (context.ResourceTypesLookup.ContainsKey(propDefinition.Value.Name) ||
-                                           string.Equals(ResourceListName, propDefinition.Value.Name));
+                                           string.Equals(ResourceListName, propDefinition.Value.Name, StringComparison.Ordinal));
 
-            var propertyStructureDefinition = context
+            IStructureDefinitionSummary propertyStructureDefinition = context
                 .GetOrCreatePropertyStructureDefinition(parentDefinition, level, propDefinition, propIsResource);
 
-            var typeKeyword = element.value.Value.Keywords.OfType<TypeKeyword>().SingleOrDefault()?.Type.ToString().ToLower();
+#pragma warning disable CA1304
+            string typeKeyword = element.value.Value.Keywords.OfType<TypeKeyword>().SingleOrDefault()?.Type.ToString().ToLower();
+#pragma warning restore CA1304
 
             ITypeSerializationInfo[] typeSerializationInfos;
 
-            if (string.Equals(ResourceListName, propDefinition?.Name))
-            {
+            if (string.Equals(ResourceListName, propDefinition?.Name, StringComparison.Ordinal))
                 typeSerializationInfos = new ITypeSerializationInfo[] { null };
-            }
             else if (parentDefinition.Equals(propDefinition?.Schema))
-            {
                 typeSerializationInfos = new ITypeSerializationInfo[] { this };
-            }
             else if (propertyStructureDefinition == null)
-            {
                 // Simple properties (i.e. const)
                 typeSerializationInfos = new ITypeSerializationInfo[] { context.GetOrCreateSimplePropertyStructureDefinition(propDefinition?.Name ?? typeKeyword ?? "string") };
-            }
             else
-            {
                 typeSerializationInfos = new ITypeSerializationInfo[] { propertyStructureDefinition };
-            }
 
             return new SchemaElementDefinitionSummary(
                 element.value.Key,
-                string.Equals("array", typeKeyword),
+                string.Equals("array", typeKeyword, StringComparison.Ordinal),
                 isRequired,
                 isRequired,
-                (element.value.Key.StartsWith("_value") || element.value.Key.StartsWith("_value")) &&
-                (element.value.Key != "value" || (element.value.Key != "_value")),
+                (element.value.Key.StartsWith("_value", StringComparison.Ordinal) || element.value.Key.StartsWith("_value", StringComparison.Ordinal)) &&
+                (element.value.Key != "value" || element.value.Key != "_value"),
                 propIsResource,
                 typeSerializationInfos,
                 typeSerializationInfos?.FirstOrDefault()?.GetTypeName() ?? typeKeyword,
                 null,
-                propDefinition?.Name?.Contains("html") == true ? XmlRepresentation.XHtml : XmlRepresentation.TypeAttr,
+                propDefinition?.Name?.Contains("html", StringComparison.Ordinal) == true ? XmlRepresentation.XHtml : XmlRepresentation.XmlElement,
                 element.i);
         }
 
@@ -309,35 +288,23 @@ public class FhirJsonSchemaStructureDefinitionSummaryProvider : IStructureDefini
                 var results = new List<ValidationResult>();
 
                 if (validationResults.HasNestedResults)
-                {
-                    foreach (var r in validationResults.NestedResults)
-                    {
+                    foreach (ValidationResults r in validationResults.NestedResults)
                         results.AddRange(Find(r));
-                    }
-                }
 
                 if (!string.IsNullOrEmpty(validationResults.Message)) // && validationResults.AbsoluteSchemaLocation?.ToString().Contains(TypeName) == true)
-                {
                     results.Add(new ValidationResult(validationResults.Message, new[] { validationResults.InstanceLocation.ToString() }));
-                }
 
                 return results;
             }
 
-            if (!(validationContext.ObjectInstance is JsonDocument jsonDocument))
-            {
-                jsonDocument = validationContext.ObjectInstance.ToJsonDocument();
-            }
+            if (!(validationContext.ObjectInstance is JsonDocument jsonDocument)) jsonDocument = validationContext.ObjectInstance.ToJsonDocument();
 
             var validationOptions = new ValidationOptions();
 
             validationOptions.DefaultBaseUri = new Uri("http://hl7.org/fhir/json-schema/4.0");
             //validationOptions.SchemaRegistry.Register(validationOptions.DefaultBaseUri, _fullSchema);
 
-            foreach (var subSchema in _fullSchema.Keywords.OfType<DefinitionsKeyword>().Single().Definitions)
-            {
-                validationOptions.SchemaRegistry.RegisterAnchor(validationOptions.DefaultBaseUri, $"#/definitions/{subSchema.Key}", subSchema.Value);
-            }
+            foreach (KeyValuePair<string, JsonSchema> subSchema in _fullSchema.Keywords.OfType<DefinitionsKeyword>().Single().Definitions) validationOptions.SchemaRegistry.RegisterAnchor(validationOptions.DefaultBaseUri, $"#/definitions/{subSchema.Key}", subSchema.Value);
 
 
             validationOptions.OutputFormat = OutputFormat.Verbose;

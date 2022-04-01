@@ -1,8 +1,15 @@
+// -------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.All rights reserved.
+// Licensed under the MIT License (MIT).See LICENSE in the repo root for license information.
+// -------------------------------------------------------------------------------------------------
+
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Hl7.Fhir.ElementModel;
+using Hl7.Fhir.Specification;
 using Hl7.FhirPath;
 using Microsoft.Health.Fhir.Extensions.Schema;
 using Microsoft.Health.Fhir.Extensions.Serialization;
@@ -11,11 +18,11 @@ using Microsoft.Health.Fhir.Specification.Extensions.Schema;
 using Xunit;
 using IValidatableObject = Hl7.Fhir.Validation.IValidatableObject;
 
-namespace Microsoft.Health.Fhir.Extensions.Tests
+namespace Microsoft.Health.Fhir.Extensions.Tests;
+
+public class FhirJsonTextNodeTests
 {
-    public class FhirJsonTextNodeTests
-    {
-        private readonly string _patientJson = @"{
+    private readonly string _patientJson = @"{
   ""resourceType"" : ""Patient"",
   ""name"" : [{
     ""id"" : ""f2"",
@@ -31,118 +38,115 @@ namespace Microsoft.Health.Fhir.Extensions.Tests
   }
 }";
 
-        [Fact]
-        public void ReadShadowProperty()
+    [Fact]
+    public void ReadShadowProperty()
+    {
+        ISourceNode sourceNode = JsonSourceNodeFactory.Parse(_patientJson);
+        IStructureDefinitionSummaryProvider meta = InstanceInferredStructureDefinitionSummaryProvider.CreateFrom(sourceNode);
+
+        ITypedElement node = sourceNode.ToTypedElement(meta);
+
+        object familyName = node.Scalar("Patient.name.family");
+        object familyId = node.Scalar("Patient.name.family.id");
+        Assert.Equal("Van", familyName);
+        Assert.Equal("a2", familyId);
+
+        object middle = node.Scalar("Patient.name.given[1]");
+        object middleId = node.Scalar("Patient.name.given[1].id");
+        Assert.Equal("May", middle);
+        Assert.Equal("middle", middleId);
+
+        object firstName = node.Scalar("Patient.name.given[0]");
+        object firstNameId = node.Scalar("Patient.name.given[0].id");
+        Assert.Equal("Karen", firstName);
+        Assert.Null(firstNameId);
+    }
+
+    [Fact]
+    public void SourceNode()
+    {
+        ISourceNode sourceNode = JsonSourceNodeFactory.Parse(_patientJson);
+        var meta = new FhirJsonSchemaStructureDefinitionSummaryProvider(FhirSpecification.R4);
+
+        ITypedElement node = sourceNode.ToTypedElement(meta);
+        ITypedElement familyType = node.Select("Patient.name.family").Single();
+
+        IReadOnlyCollection<IElementDefinitionSummary> definitions = familyType.ChildDefinitions(meta);
+    }
+
+    [Fact]
+    public void WithJsonDoc()
+    {
+        var jsonDoc = JsonDocument.Parse(_patientJson);
+        ISourceNode sourceNode = jsonDoc.CreateSourceNode();
+
+        var meta = new FhirJsonSchemaStructureDefinitionSummaryProvider(FhirSpecification.R4);
+
+        ITypedElement node = sourceNode.ToTypedElement(meta);
+        ITypedElement familyType = node.Select("Patient.name.family").Single();
+
+        IReadOnlyCollection<IElementDefinitionSummary> definitions = familyType.ChildDefinitions(meta);
+    }
+
+    [Fact]
+    public void ValidateObject()
+    {
+        var jsonDoc = JsonDocument.Parse(_patientJson);
+
+        var meta = new FhirJsonSchemaStructureDefinitionSummaryProvider(FhirSpecification.R4);
+        ISourceNode node = jsonDoc.CreateSourceNode();
+
+        var summary = meta.Provide(node.GetResourceTypeIndicator()) as IValidatableObject;
+
+        ValidationResult[] results = summary.Validate(new ValidationContext(jsonDoc)).ToArray();
+
+
+        var sourceNode = JsonDocument.Parse("{ \"resourceType\": \"Boo\" }");
+
+        results = summary.Validate(new ValidationContext(sourceNode)).ToArray();
+    }
+
+    [Fact]
+    public void WithSchema()
+    {
+        ISourceNode sourceNode = JsonSourceNodeFactory.Parse(_patientJson);
+        var meta = new FhirJsonSchemaStructureDefinitionSummaryProvider(FhirSpecification.R4);
+
+        ITypedElement node = sourceNode.ToTypedElement(meta);
+
+        object familyName = node.Scalar("Patient.name.family");
+        object familyId = node.Scalar("Patient.name.family.id");
+        Assert.Equal("Van", familyName);
+        Assert.Equal("a2", familyId);
+
+        object middle = node.Scalar("Patient.name.given[1]");
+        object middleId = node.Scalar("Patient.name.given[1].id");
+        Assert.Equal("May", middle);
+        Assert.Equal("middle", middleId);
+
+        object firstName = node.Scalar("Patient.name.given[0]");
+        object firstNameId = node.Scalar("Patient.name.given[0].id");
+        Assert.Equal("Karen", firstName);
+        Assert.Null(firstNameId);
+    }
+
+
+    [Fact]
+    public void WithJsonNode()
+    {
+        var sourceNode = JsonNodeSourceNode.FromRoot(JsonNode.Parse(_patientJson));
+        var meta = new FhirJsonSchemaStructureDefinitionSummaryProvider(FhirSpecification.R4);
+
+        ITypedElement node = sourceNode.ToTypedElement(meta);
+
+        object familyName = node.Scalar("Patient.name.family");
+        object familyId = node.Scalar("Patient.name.family.id");
+        Assert.Equal("Van", familyName);
+        Assert.Equal("a2", familyId);
+
+        ITypedElement familyNodes = node.Select("Patient.name.family").Single();
+        if (familyNodes is ScopedNode sn && sn.Current is JsonNodeSourceNode jsonFamilyNode)
         {
-            var sourceNode = JsonSourceNodeFactory.Parse(_patientJson);
-            var meta = InstanceInferredStructureDefinitionSummaryProvider.CreateFrom(sourceNode);
-
-            var node = sourceNode.ToTypedElement(meta);
-
-            var familyName = node.Scalar("Patient.name.family");
-            var familyId = node.Scalar("Patient.name.family.id");
-            Assert.Equal("Van", familyName);
-            Assert.Equal("a2", familyId);
-
-            var middle = node.Scalar("Patient.name.given[1]");
-            var middleId = node.Scalar("Patient.name.given[1].id");
-            Assert.Equal("May", middle);
-            Assert.Equal("middle", middleId);
-
-            var firstName = node.Scalar("Patient.name.given[0]");
-            var firstNameId = node.Scalar("Patient.name.given[0].id");
-            Assert.Equal("Karen", firstName);
-            Assert.Null(firstNameId);
-        }
-
-        [Fact]
-        public void SourceNode()
-        {
-            var sourceNode = JsonSourceNodeFactory.Parse(_patientJson);
-            var meta = new FhirJsonSchemaStructureDefinitionSummaryProvider(FhirSpecification.R4);
-
-            var node = sourceNode.ToTypedElement(meta);
-            var familyType = node.Select("Patient.name.family").Single();
-
-            var definitions = familyType.ChildDefinitions(meta);
-
-        }
-
-        [Fact]
-        public void WithJsonDoc()
-        {
-            var jsonDoc = JsonDocument.Parse(_patientJson);
-            var sourceNode = jsonDoc.CreateSourceNode();
-
-            var meta = new FhirJsonSchemaStructureDefinitionSummaryProvider(FhirSpecification.R4);
-
-            var node = sourceNode.ToTypedElement(meta);
-            var familyType = node.Select("Patient.name.family").Single();
-
-            var definitions = familyType.ChildDefinitions(meta);
-        }
-
-        [Fact]
-        public void ValidateObject()
-        {
-            var jsonDoc = JsonDocument.Parse(_patientJson);
-
-            var meta = new FhirJsonSchemaStructureDefinitionSummaryProvider(FhirSpecification.R4);
-            var node = jsonDoc.CreateSourceNode();
-
-            var summary = meta.Provide(node.GetResourceTypeIndicator()) as IValidatableObject;
-
-            var results = summary.Validate(new ValidationContext(jsonDoc)).ToArray();
-
-
-            var sourceNode = JsonDocument.Parse("{ \"resourceType\": \"Boo\" }");
-
-            results = summary.Validate(new ValidationContext(sourceNode)).ToArray();
-        }
-
-        [Fact]
-        public void WithSchema()
-        {
-            var sourceNode = JsonSourceNodeFactory.Parse(_patientJson);
-            var meta = new FhirJsonSchemaStructureDefinitionSummaryProvider(FhirSpecification.R4);
-
-            var node = sourceNode.ToTypedElement(meta);
-
-            var familyName = node.Scalar("Patient.name.family");
-            var familyId = node.Scalar("Patient.name.family.id");
-            Assert.Equal("Van", familyName);
-            Assert.Equal("a2", familyId);
-
-            var middle = node.Scalar("Patient.name.given[1]");
-            var middleId = node.Scalar("Patient.name.given[1].id");
-            Assert.Equal("May", middle);
-            Assert.Equal("middle", middleId);
-
-            var firstName = node.Scalar("Patient.name.given[0]");
-            var firstNameId = node.Scalar("Patient.name.given[0].id");
-            Assert.Equal("Karen", firstName);
-            Assert.Null(firstNameId);
-        }
-
-
-        [Fact]
-        public void WithJsonNode()
-        {
-            var sourceNode = JsonNodeSourceNode.FromRoot(JsonNode.Parse(_patientJson));
-            var meta = new FhirJsonSchemaStructureDefinitionSummaryProvider(FhirSpecification.R4);
-
-            var node = sourceNode.ToTypedElement(meta);
-
-            var familyName = node.Scalar("Patient.name.family");
-            var familyId = node.Scalar("Patient.name.family.id");
-            Assert.Equal("Van", familyName);
-            Assert.Equal("a2", familyId);
-
-            var familyNodes = node.Select("Patient.name.family").Single();
-            if (familyNodes is ScopedNode sn && sn.Current is JsonNodeSourceNode jsonFamilyNode)
-            {
-
-            }
         }
     }
 }

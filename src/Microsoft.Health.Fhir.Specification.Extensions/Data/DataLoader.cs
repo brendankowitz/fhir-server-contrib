@@ -1,4 +1,9 @@
-﻿using System.Reflection;
+﻿// -------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.All rights reserved.
+// Licensed under the MIT License (MIT).See LICENSE in the repo root for license information.
+// -------------------------------------------------------------------------------------------------
+
+using System.Reflection;
 using Microsoft.Health.Fhir.Extensions;
 
 namespace Microsoft.Health.Fhir.Specification.Extensions.Data;
@@ -10,7 +15,7 @@ public static class DataLoader
 
     public static Stream OpenVersionedFileStream(FhirSpecification fhirVersion, string filename, string @namespace = null, Assembly assembly = null)
     {
-        var manifestName = $"{@namespace ?? ThisNamespace}.{fhirVersion}.{filename}";
+        string manifestName = $"{@namespace ?? ThisNamespace}.{fhirVersion}.{filename}";
         return (assembly ?? ThisAssembly).GetManifestResourceStream(manifestName);
     }
 }

@@ -1,4 +1,9 @@
-﻿using Json.Schema;
+﻿// -------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.All rights reserved.
+// Licensed under the MIT License (MIT).See LICENSE in the repo root for license information.
+// -------------------------------------------------------------------------------------------------
+
+using Json.Schema;
 
 namespace Microsoft.Health.Fhir.Specification.Extensions.Schema;
 
@@ -8,23 +13,18 @@ internal static class JsonSchemaExtensions
     {
         return reference.ToString().Split('/').Last();
     }
-    
+
     public static (string Name, JsonSchema Schema)? Lookup(this IReadOnlyDictionary<string, JsonSchema> schema, JsonSchema reference)
     {
-        var singleOrDefault = reference?.Keywords?.OfType<RefKeyword>().SingleOrDefault();
+        RefKeyword singleOrDefault = reference?.Keywords?.OfType<RefKeyword>().SingleOrDefault();
 
         if (singleOrDefault == null)
-        {
             singleOrDefault = reference?.Keywords?.OfType<ItemsKeyword>().SingleOrDefault()?.SingleSchema?.Keywords
                 ?.OfType<RefKeyword>().SingleOrDefault();
-        }
 
-        if (singleOrDefault == null)
-        {
-            return null;
-        }
-        
-        var name = singleOrDefault.Reference.ToName();
+        if (singleOrDefault == null) return null;
+
+        string name = singleOrDefault.Reference.ToName();
         return (name, schema[name]);
     }
 }

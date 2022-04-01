@@ -1,6 +1,6 @@
 ﻿// -------------------------------------------------------------------------------------------------
-// Copyright (c) Microsoft Corporation. All rights reserved.
-// Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
+// Copyright (c) Microsoft Corporation.All rights reserved.
+// Licensed under the MIT License (MIT).See LICENSE in the repo root for license information.
 // -------------------------------------------------------------------------------------------------
 
 using EnsureThat;
@@ -8,103 +8,96 @@ using Hl7.Fhir.ElementModel;
 using Microsoft.Health.Fhir.Search.Extensions.Indexing;
 using Microsoft.Health.Fhir.Search.Extensions.Models;
 
-namespace Microsoft.Health.Fhir.Search.Extensions.Definition
+namespace Microsoft.Health.Fhir.Search.Extensions.Definition;
+
+/// <summary>
+/// A SearchParameterDefinitionManager that only returns actively searchable parameters.
+/// </summary>
+public class SupportedSearchParameterDefinitionManager : ISupportedSearchParameterDefinitionManager
 {
-    /// <summary>
-    /// A SearchParameterDefinitionManager that only returns actively searchable parameters.
-    /// </summary>
-    public class SupportedSearchParameterDefinitionManager : ISupportedSearchParameterDefinitionManager
+    private readonly ISearchParameterDefinitionManager _inner;
+
+    public SupportedSearchParameterDefinitionManager(ISearchParameterDefinitionManager inner)
     {
-        private readonly ISearchParameterDefinitionManager _inner;
+        EnsureArg.IsNotNull(inner, nameof(inner));
 
-        public SupportedSearchParameterDefinitionManager(ISearchParameterDefinitionManager inner)
+        _inner = inner;
+    }
+
+    public IEnumerable<SearchParameterInfo> AllSearchParameters => _inner.AllSearchParameters.Where(x => x.IsSupported);
+
+    public IReadOnlyDictionary<string, string> SearchParameterHashMap => _inner.SearchParameterHashMap;
+
+    public IEnumerable<SearchParameterInfo> GetSearchParameters(string resourceType)
+    {
+        return _inner.GetSearchParameters(resourceType)
+            .Where(x => x.IsSupported);
+    }
+
+    public bool TryGetSearchParameter(string resourceType, string code, out SearchParameterInfo searchParameter)
+    {
+        searchParameter = null;
+        if (_inner.TryGetSearchParameter(resourceType, code, out SearchParameterInfo parameter) && parameter.IsSupported)
         {
-            EnsureArg.IsNotNull(inner, nameof(inner));
+            searchParameter = parameter;
 
-            _inner = inner;
+            return true;
         }
 
-        public IEnumerable<SearchParameterInfo> AllSearchParameters => _inner.AllSearchParameters.Where(x => x.IsSupported);
+        return false;
+    }
 
-        public IReadOnlyDictionary<string, string> SearchParameterHashMap => _inner.SearchParameterHashMap;
+    public SearchParameterInfo GetSearchParameter(string resourceType, string code)
+    {
+        SearchParameterInfo parameter = _inner.GetSearchParameter(resourceType, code);
+        if (parameter.IsSupported) return parameter;
 
-        public IEnumerable<SearchParameterInfo> GetSearchParameters(string resourceType)
+        throw new SearchParameterNotSupportedException(resourceType, code);
+    }
+
+    public SearchParameterInfo GetSearchParameter(Uri definitionUri)
+    {
+        SearchParameterInfo parameter = _inner.GetSearchParameter(definitionUri);
+        if (parameter.IsSupported) return parameter;
+
+        throw new SearchParameterNotSupportedException(definitionUri);
+    }
+
+    public IEnumerable<SearchParameterInfo> GetSearchParametersRequiringReindexing()
+    {
+        return AllSearchParameters.Where(p => p.IsSearchable == false || p.SortStatus == SortParameterStatus.Supported);
+    }
+
+    public string GetSearchParameterHashForResourceType(string resourceType)
+    {
+        return _inner.GetSearchParameterHashForResourceType(resourceType);
+    }
+
+    public void AddNewSearchParameters(IReadOnlyCollection<ITypedElement> searchParameters, bool calculateHash = true)
+    {
+        _inner.AddNewSearchParameters(searchParameters, calculateHash);
+    }
+
+    public void UpdateSearchParameterHashMap(Dictionary<string, string> updatedSearchParamHashMap)
+    {
+        _inner.UpdateSearchParameterHashMap(updatedSearchParamHashMap);
+    }
+
+    public bool TryGetSearchParameter(Uri definitionUri, out SearchParameterInfo value)
+    {
+        value = null;
+        if (_inner.TryGetSearchParameter(definitionUri, out SearchParameterInfo parameter) && parameter.IsSupported)
         {
-            return _inner.GetSearchParameters(resourceType)
-                .Where(x => x.IsSupported);
+            value = parameter;
+
+            return true;
         }
 
-        public bool TryGetSearchParameter(string resourceType, string code, out SearchParameterInfo searchParameter)
-        {
-            searchParameter = null;
-            if (_inner.TryGetSearchParameter(resourceType, code, out var parameter) && parameter.IsSupported)
-            {
-                searchParameter = parameter;
+        return false;
+    }
 
-                return true;
-            }
-
-            return false;
-        }
-
-        public SearchParameterInfo GetSearchParameter(string resourceType, string code)
-        {
-            SearchParameterInfo parameter = _inner.GetSearchParameter(resourceType, code);
-            if (parameter.IsSupported)
-            {
-                return parameter;
-            }
-
-            throw new SearchParameterNotSupportedException(resourceType, code);
-        }
-
-        public SearchParameterInfo GetSearchParameter(Uri definitionUri)
-        {
-            SearchParameterInfo parameter = _inner.GetSearchParameter(definitionUri);
-            if (parameter.IsSupported)
-            {
-                return parameter;
-            }
-
-            throw new SearchParameterNotSupportedException(definitionUri);
-        }
-
-        public IEnumerable<SearchParameterInfo> GetSearchParametersRequiringReindexing()
-        {
-            return AllSearchParameters.Where(p => p.IsSearchable == false || p.SortStatus == SortParameterStatus.Supported);
-        }
-
-        public string GetSearchParameterHashForResourceType(string resourceType)
-        {
-            return _inner.GetSearchParameterHashForResourceType(resourceType);
-        }
-
-        public void AddNewSearchParameters(IReadOnlyCollection<ITypedElement> searchParameters, bool calculateHash = true)
-        {
-            _inner.AddNewSearchParameters(searchParameters, calculateHash);
-        }
-
-        public void UpdateSearchParameterHashMap(Dictionary<string, string> updatedSearchParamHashMap)
-        {
-            _inner.UpdateSearchParameterHashMap(updatedSearchParamHashMap);
-        }
-        
-        public bool TryGetSearchParameter(Uri definitionUri, out SearchParameterInfo value)
-        {
-            value = null;
-            if (_inner.TryGetSearchParameter(definitionUri, out var parameter) && parameter.IsSupported)
-            {
-                value = parameter;
-
-                return true;
-            }
-
-            return false;
-        }
-
-        public void DeleteSearchParameter(string url, bool calculateHash = true)
-        {
-            throw new NotImplementedException();
-        }
+    public void DeleteSearchParameter(string url, bool calculateHash = true)
+    {
+        throw new NotImplementedException();
     }
 }

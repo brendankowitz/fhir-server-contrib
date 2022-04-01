@@ -1,108 +1,95 @@
 ﻿// -------------------------------------------------------------------------------------------------
-// Copyright (c) Microsoft Corporation. All rights reserved.
-// Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
+// Copyright (c) Microsoft Corporation.All rights reserved.
+// Licensed under the MIT License (MIT).See LICENSE in the repo root for license information.
 // -------------------------------------------------------------------------------------------------
 
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using EnsureThat;
 
-namespace Microsoft.Health.Fhir.Search.Extensions.Indexing.SearchValues
+namespace Microsoft.Health.Fhir.Search.Extensions.Indexing.SearchValues;
+
+/// <summary>
+/// Represents a string search value.
+/// </summary>
+[SuppressMessage("ReSharper", "CA1036", Justification = "Used for sort comparison.")]
+public class StringSearchValue : ISearchValue, ISupportSortSearchValue
 {
     /// <summary>
-    /// Represents a string search value.
+    /// Initializes a new instance of the <see cref="StringSearchValue"/> class.
     /// </summary>
-    [SuppressMessage("ReSharper", "CA1036", Justification = "Used for sort comparison.")]
-    public class StringSearchValue : ISearchValue, ISupportSortSearchValue
+    /// <param name="s">The string value.</param>
+    public StringSearchValue(string s)
     {
-        /// <summary>
-        /// Initializes a new instance of the <see cref="StringSearchValue"/> class.
-        /// </summary>
-        /// <param name="s">The string value.</param>
-        public StringSearchValue(string s)
-        {
-            EnsureArg.IsNotNullOrWhiteSpace(s, nameof(s));
+        EnsureArg.IsNotNullOrWhiteSpace(s, nameof(s));
 
-            String = s.UnescapeSearchParameterValue();
-        }
+        String = s.UnescapeSearchParameterValue();
+    }
 
-        /// <summary>
-        /// Gets the unescaped string value.
-        /// </summary>
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Naming", "CA1720:Identifier contains type name", Justification = "Represents a FHIR search parameter of type string")]
-        public string String { get; }
+    /// <summary>
+    /// Gets the unescaped string value.
+    /// </summary>
+    [SuppressMessage("Naming", "CA1720:Identifier contains type name", Justification = "Represents a FHIR search parameter of type string")]
+    public string String { get; }
 
-        /// <inheritdoc />
-        public bool IsValidAsCompositeComponent => true;
+    /// <inheritdoc />
+    public bool IsValidAsCompositeComponent => true;
 
-        /// <inheritdoc />
-        public bool IsMin { get; set; }
+    /// <inheritdoc />
+    public void AcceptVisitor(ISearchValueVisitor visitor)
+    {
+        EnsureArg.IsNotNull(visitor, nameof(visitor));
 
-        /// <inheritdoc />
-        public bool IsMax { get; set; }
+        visitor.Visit(this);
+    }
 
-        /// <summary>
-        /// Parses the string value to an instance of <see cref="StringSearchValue"/>.
-        /// </summary>
-        /// <param name="s">The string to be parsed.</param>
-        /// <returns>An instance of <see cref="StringSearchValue"/>.</returns>
-        public static StringSearchValue Parse(string s)
-        {
-            EnsureArg.IsNotNullOrWhiteSpace(s, nameof(s));
+    public bool Equals([AllowNull] ISearchValue other)
+    {
+        if (other == null) return false;
 
-            return new StringSearchValue(s);
-        }
+        var stringSearchValueOther = other as StringSearchValue;
 
-        /// <inheritdoc />
-        public void AcceptVisitor(ISearchValueVisitor visitor)
-        {
-            EnsureArg.IsNotNull(visitor, nameof(visitor));
+        if (stringSearchValueOther == null) return false;
 
-            visitor.Visit(this);
-        }
+        return String.Equals(stringSearchValueOther.String, StringComparison.OrdinalIgnoreCase);
+    }
 
-        /// <inheritdoc />
-        public int CompareTo(ISupportSortSearchValue other, ComparisonRange range)
-        {
-            if (other == null)
-            {
-                throw new ArgumentException("Value to be compared to cannot be null");
-            }
+    /// <inheritdoc />
+    public bool IsMin { get; set; }
 
-            var otherValue = other as StringSearchValue;
-            if (otherValue == null)
-            {
-                throw new ArgumentException($"Value to be compared should be of type {typeof(StringSearchValue)}");
-            }
+    /// <inheritdoc />
+    public bool IsMax { get; set; }
 
-            // We want to do a case and accent insensitive comparison here.
-            // This is to be in-line with the collation used in our SQL tables for the StringSearchParam values
+    /// <inheritdoc />
+    public int CompareTo(ISupportSortSearchValue other, ComparisonRange range)
+    {
+        if (other == null) throw new ArgumentException("Value to be compared to cannot be null");
+
+        var otherValue = other as StringSearchValue;
+        if (otherValue == null) throw new ArgumentException($"Value to be compared should be of type {typeof(StringSearchValue)}");
+
+        // We want to do a case and accent insensitive comparison here.
+        // This is to be in-line with the collation used in our SQL tables for the StringSearchParam values
 #pragma warning disable CA1309
-            return string.Compare(ToString(), otherValue.ToString(), CultureInfo.InvariantCulture, CompareOptions.IgnoreNonSpace | CompareOptions.IgnoreCase);
+        return string.Compare(ToString(), otherValue.ToString(), CultureInfo.InvariantCulture, CompareOptions.IgnoreNonSpace | CompareOptions.IgnoreCase);
 #pragma warning restore CA1309
-        }
+    }
 
-        public bool Equals([AllowNull] ISearchValue other)
-        {
-            if (other == null)
-            {
-                return false;
-            }
+    /// <summary>
+    /// Parses the string value to an instance of <see cref="StringSearchValue"/>.
+    /// </summary>
+    /// <param name="s">The string to be parsed.</param>
+    /// <returns>An instance of <see cref="StringSearchValue"/>.</returns>
+    public static StringSearchValue Parse(string s)
+    {
+        EnsureArg.IsNotNullOrWhiteSpace(s, nameof(s));
 
-            var stringSearchValueOther = other as StringSearchValue;
+        return new StringSearchValue(s);
+    }
 
-            if (stringSearchValueOther == null)
-            {
-                return false;
-            }
-
-            return String.Equals(stringSearchValueOther.String, StringComparison.OrdinalIgnoreCase);
-        }
-
-        /// <inheritdoc />
-        public override string ToString()
-        {
-            return String.EscapeSearchParameterValue();
-        }
+    /// <inheritdoc />
+    public override string ToString()
+    {
+        return String.EscapeSearchParameterValue();
     }
 }

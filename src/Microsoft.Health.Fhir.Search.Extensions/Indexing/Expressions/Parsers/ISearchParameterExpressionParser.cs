@@ -1,17 +1,16 @@
 ﻿// -------------------------------------------------------------------------------------------------
-// Copyright (c) Microsoft Corporation. All rights reserved.
-// Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
+// Copyright (c) Microsoft Corporation.All rights reserved.
+// Licensed under the MIT License (MIT).See LICENSE in the repo root for license information.
 // -------------------------------------------------------------------------------------------------
 
 using Microsoft.Health.Fhir.Search.Extensions.Models;
 
-namespace Microsoft.Health.Fhir.Search.Extensions.Indexing.Expressions.Parsers
+namespace Microsoft.Health.Fhir.Search.Extensions.Indexing.Expressions.Parsers;
+
+public interface ISearchParameterExpressionParser
 {
-    public interface ISearchParameterExpressionParser
-    {
-        Expression Parse(
-            SearchParameterInfo searchParameter,
-            SearchModifier modifier,
-            string value);
-    }
+    Expression Parse(
+        SearchParameterInfo searchParameter,
+        SearchModifier modifier,
+        string value);
 }

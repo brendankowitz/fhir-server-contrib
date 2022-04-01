@@ -1,4 +1,10 @@
-﻿#nullable enable
+﻿// -------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.All rights reserved.
+// Licensed under the MIT License (MIT).See LICENSE in the repo root for license information.
+// -------------------------------------------------------------------------------------------------
+
+#nullable enable
+
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
@@ -10,22 +16,13 @@ public class ResourceConverter : JsonConverter<ResourceJsonNode>
 {
     public override ResourceJsonNode? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
-        if (reader.TokenType != JsonTokenType.StartObject)
-        {
-            throw new JsonException();
-        }
+        if (reader.TokenType != JsonTokenType.StartObject) throw new JsonException();
 
         var node = JsonNode.Parse(ref reader);
-        if (node == null)
-        {
-            throw new JsonException();
-        }
+        if (node == null) throw new JsonException();
 
-        if (node["resourceType"]?.ToString() == KnownResourceTypes.SearchParameter)
-        {
-            return node.Deserialize<SearchParameterJsonNode>();
-        }
-        
+        if (node["resourceType"]?.ToString() == KnownResourceTypes.SearchParameter) return node.Deserialize<SearchParameterJsonNode>();
+
         return node.Deserialize<ResourceJsonNode>();
     }
 

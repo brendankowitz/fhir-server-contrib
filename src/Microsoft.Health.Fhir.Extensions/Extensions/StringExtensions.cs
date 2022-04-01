@@ -1,4 +1,9 @@
-﻿using System.Security.Cryptography;
+﻿// -------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.All rights reserved.
+// Licensed under the MIT License (MIT).See LICENSE in the repo root for license information.
+// -------------------------------------------------------------------------------------------------
+
+using System.Security.Cryptography;
 using System.Text;
 using EnsureThat;
 
@@ -16,7 +21,7 @@ public static class StringExtensions
         EnsureArg.IsNotNull(data, nameof(data));
 
         using var sha256 = HashAlgorithm.Create(nameof(SHA256));
-        var hashed = sha256.ComputeHash(Encoding.UTF8.GetBytes(data));
+        byte[] hashed = sha256.ComputeHash(Encoding.UTF8.GetBytes(data));
         return BitConverter.ToString(hashed).Replace("-", string.Empty, StringComparison.Ordinal);
     }
 }

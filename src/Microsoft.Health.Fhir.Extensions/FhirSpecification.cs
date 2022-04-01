@@ -1,15 +1,14 @@
 ﻿// -------------------------------------------------------------------------------------------------
-// Copyright (c) Microsoft Corporation. All rights reserved.
-// Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
+// Copyright (c) Microsoft Corporation.All rights reserved.
+// Licensed under the MIT License (MIT).See LICENSE in the repo root for license information.
 // -------------------------------------------------------------------------------------------------
 
-namespace Microsoft.Health.Fhir.Extensions
+namespace Microsoft.Health.Fhir.Extensions;
+
+public enum FhirSpecification
 {
-    public enum FhirSpecification
-    {
-        Stu3,
-        R4,
-        R4B,
-        R5,
-    }
+    Stu3,
+    R4,
+    R4B,
+    R5
 }

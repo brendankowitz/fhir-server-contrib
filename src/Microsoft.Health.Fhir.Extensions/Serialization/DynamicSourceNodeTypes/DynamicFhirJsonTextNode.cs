@@ -1,13 +1,12 @@
 ﻿// -------------------------------------------------------------------------------------------------
-// Copyright (c) Microsoft Corporation. All rights reserved.
-// Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
+// Copyright (c) Microsoft Corporation.All rights reserved.
+// Licensed under the MIT License (MIT).See LICENSE in the repo root for license information.
 // -------------------------------------------------------------------------------------------------
 
 using System.Text.Json;
 using Hl7.Fhir.ElementModel;
 using Hl7.Fhir.Serialization;
 using Hl7.Fhir.Utility;
-using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Health.Fhir.Extensions.Serialization.DynamicSourceNodeTypes;
 
@@ -16,22 +15,13 @@ namespace Microsoft.Health.Fhir.Extensions.Serialization.DynamicSourceNodeTypes;
 /// </summary>
 public class DynamicFhirJsonTextNode : ISourceNode, IResourceTypeSupplier, IAnnotated, IDisposable
 {
-    private readonly JsonMergeSettings _jsonMergeSettings = new()
-    {
-        PropertyNameComparison = StringComparison.OrdinalIgnoreCase,
-        MergeNullValueHandling = MergeNullValueHandling.Merge,
-        MergeArrayHandling = MergeArrayHandling.Union
-    };
-
     private IList<(string Name, Lazy<IEnumerable<ISourceNode>> Nodes)> _children;
     private JsonDocument _jsonDocument;
     private JsonElement? _jsonElement;
     private Lazy<ILookup<string, JsonProperty>> _jsonElementProperties;
     private Lazy<string> _location;
-    private JObject _modifyObject;
     private Lazy<string> _name;
 
-    private string _nodeName;
     private Lazy<string> _resourceType;
 
     private DynamicFhirJsonTextNode(JsonDocument jsonDocument, string nodeName)
@@ -39,8 +29,13 @@ public class DynamicFhirJsonTextNode : ISourceNode, IResourceTypeSupplier, IAnno
         Initialize(jsonDocument, nodeName);
     }
 
-    private DynamicFhirJsonTextNode(string name, JsonElement? value, JsonElement? content, bool usesShadow,
-        int? arrayIndex, string location)
+    private DynamicFhirJsonTextNode(
+        string name,
+        JsonElement? value,
+        JsonElement? content,
+        bool usesShadow,
+        int? arrayIndex,
+        string location)
     {
         _name = new Lazy<string>(() => name);
         _location = new Lazy<string>(() => location);
@@ -64,7 +59,8 @@ public class DynamicFhirJsonTextNode : ISourceNode, IResourceTypeSupplier, IAnno
     public IEnumerable<object> Annotations(Type type)
     {
         if (type == typeof(DynamicFhirJsonTextNode) || type == typeof(FhirJsonNode) || type == typeof(ISourceNode) ||
-            type == typeof(IResourceTypeSupplier)) return new[] {this};
+            type == typeof(IResourceTypeSupplier))
+            return new[] { this };
 
         return Enumerable.Empty<object>();
     }
@@ -91,9 +87,8 @@ public class DynamicFhirJsonTextNode : ISourceNode, IResourceTypeSupplier, IAnno
 
             if (JsonValue != null)
             {
-                var rawText = JsonValue?.GetRawText();
-                if (!string.IsNullOrWhiteSpace(rawText))
-                    return PrimitiveTypeConverter.ConvertTo<string>(rawText.Trim());
+                string rawText = JsonValue.Value.GetRawText();
+                if (!string.IsNullOrWhiteSpace(rawText)) return PrimitiveTypeConverter.ConvertTo<string>(rawText.Trim());
             }
 
             return null;
@@ -107,33 +102,33 @@ public class DynamicFhirJsonTextNode : ISourceNode, IResourceTypeSupplier, IAnno
             var childNodes = new List<(string Name, Lazy<IEnumerable<ISourceNode>> Nodes)>();
 
             if (!(_jsonElement == null ||
-                  _jsonElement?.ValueKind == JsonValueKind.Null
-                  || _jsonElement?.ValueKind == JsonValueKind.Undefined
-                  || _jsonElement?.EnumerateObject().Any() == false))
+                  _jsonElement.Value.ValueKind == JsonValueKind.Null
+                  || _jsonElement.Value.ValueKind == JsonValueKind.Undefined
+                  || _jsonElement.Value.EnumerateObject().Any() == false))
             {
                 // ToList() added explicitly here, we really need our own copy of the list of children
                 // Note: this will create a lookup with a grouping that groups the main + shadow property
                 // under the same name (which is the name without the _).
 
-                var children = _jsonElementProperties.Value;
+                ILookup<string, JsonProperty> children = _jsonElementProperties.Value;
 
                 var processed = new HashSet<string>();
 
                 IEnumerable<IGrouping<string, JsonProperty>> scanChildren = children;
 
-                var resourceTypeChild = GetResourceTypePropertyFromObject(_jsonElement.Value, Name).GetValueOrDefault();
+                JsonElement resourceTypeChild = GetResourceTypePropertyFromObject(_jsonElement.Value, Name).GetValueOrDefault();
 
-                foreach (var child in scanChildren)
+                foreach (IGrouping<string, JsonProperty> child in scanChildren)
                 {
                     if (child.First().Value.Equals(resourceTypeChild)) continue;
 
                     if (processed.Contains(child.Key)) continue;
 
-                    (var main, var shadow) = GivenGetNextElementPair(child);
+                    (JsonProperty main, JsonProperty shadow) = GivenGetNextElementPair(child);
 
                     processed.Add(child.Key);
 
-                    var innerChild = child;
+                    IGrouping<string, JsonProperty> innerChild = child;
                     var nodes = new Lazy<IEnumerable<ISourceNode>>(() =>
                         GivenEnumerateElement(innerChild.Key, main, shadow).ToArray());
                     childNodes.Add((child.Key, nodes));
@@ -150,7 +145,7 @@ public class DynamicFhirJsonTextNode : ISourceNode, IResourceTypeSupplier, IAnno
 
     private static JsonElement? GetResourceTypePropertyFromObject(JsonElement o, string myName)
     {
-        return !o.TryGetProperty(JsonSerializationDetails.RESOURCETYPE_MEMBER_NAME, out var type) ? null
+        return !o.TryGetProperty(JsonSerializationDetails.RESOURCETYPE_MEMBER_NAME, out JsonElement type) ? null
             : type.ValueKind == JsonValueKind.String && myName != "instance" ? type : null;
     }
 
@@ -165,41 +160,26 @@ public class DynamicFhirJsonTextNode : ISourceNode, IResourceTypeSupplier, IAnno
         return new DynamicFhirJsonTextNode(document, nodeName);
     }
 
-    public void Merge(params object[] replacements)
-    {
-        if (_modifyObject == null)
-        {
-            var text = _jsonDocument.RootElement.GetRawText();
-            _modifyObject = JObject.Parse(text);
-        }
-
-        foreach (var replacement in replacements)
-            _modifyObject.Merge(JObject.FromObject(replacement), _jsonMergeSettings);
-
-        Initialize(JsonDocument.Parse(_modifyObject.ToString()), _nodeName);
-    }
-
-    private (JsonProperty main, JsonProperty shadow) GivenGetNextElementPair(IGrouping<string, JsonProperty> child)
+    private static (JsonProperty Main, JsonProperty Shadow) GivenGetNextElementPair(IGrouping<string, JsonProperty> child)
     {
         JsonProperty main = child.First(), shadow = child.Skip(1).FirstOrDefault();
         return main.Name[0] != '_' ? (main, shadow) : (shadow, main);
     }
 
-    private IEnumerable<DynamicFhirJsonTextNode> GivenEnumerateElement(string name, JsonProperty main,
-        JsonProperty shadow)
+    private IEnumerable<DynamicFhirJsonTextNode> GivenEnumerateElement(string name, JsonProperty main, JsonProperty shadow)
     {
         // Even if main/shadow has errors (i.e. not both are an array, number of items are not the same
         // we should be getting some kind of minimal useable list from the next two statements and
         // continue parsing.
-        var mains = MakeList(main, out var wasArrayMain);
-        var shadows = MakeList(shadow, out var wasArrayShadow);
-        var isArrayElement = wasArrayMain | wasArrayShadow;
+        IList<JsonElement> mains = MakeList(main, out bool wasArrayMain);
+        IList<JsonElement> shadows = MakeList(shadow, out bool wasArrayShadow);
+        bool isArrayElement = wasArrayMain | wasArrayShadow;
 
-        var length = Math.Max(mains.Count, shadows.Count);
+        int length = Math.Max(mains.Count, shadows.Count);
 
-        for (var index = 0; index < length; index++)
+        for (int index = 0; index < length; index++)
         {
-            var result = BuildNode(name, At(mains, index), At(shadows, index), isArrayElement, index);
+            DynamicFhirJsonTextNode result = BuildNode(name, At(mains, index), At(shadows, index), isArrayElement, index);
             if (result != null) yield return result;
         }
 
@@ -220,7 +200,7 @@ public class DynamicFhirJsonTextNode : ISourceNode, IResourceTypeSupplier, IAnno
                 return prop.Value.EnumerateArray().Select(x => x).ToList();
             }
 
-            return new[] {prop.Value};
+            return new[] { prop.Value };
         }
     }
 
@@ -283,7 +263,7 @@ public class DynamicFhirJsonTextNode : ISourceNode, IResourceTypeSupplier, IAnno
         // this property completely
         if (value == null && contents == null) return null;
 
-        var location = $"{Location}.{name}[{index}]";
+        string location = $"{Location}.{name}[{index}]";
         return new DynamicFhirJsonTextNode(
             name,
             value,
@@ -296,7 +276,7 @@ public class DynamicFhirJsonTextNode : ISourceNode, IResourceTypeSupplier, IAnno
         {
             if (v.ValueKind == JsonValueKind.String)
             {
-                var str = v.GetString();
+                string str = v.GetString();
                 if (string.IsNullOrWhiteSpace(str)) return null;
             }
 
@@ -317,7 +297,7 @@ public class DynamicFhirJsonTextNode : ISourceNode, IResourceTypeSupplier, IAnno
 
         string DeriveMainName(JsonProperty prop)
         {
-            var name = prop.Name;
+            string name = prop.Name;
             return name[0] == '_' ? name.Substring(1) : name;
         }
     }
@@ -334,7 +314,6 @@ public class DynamicFhirJsonTextNode : ISourceNode, IResourceTypeSupplier, IAnno
         _jsonElement = _jsonDocument.RootElement;
         SetupObjectEnumeration();
         GetResourceType(nodeName);
-        _nodeName = nodeName;
         _name = new Lazy<string>(() => (nodeName ?? (string.IsNullOrEmpty(ResourceType) ? null : ResourceType))
                                        ?? throw Error.InvalidOperation(
                                            "Root object has no type indication (resourceType) and therefore cannot be used to construct an FhirJsonNode. " +

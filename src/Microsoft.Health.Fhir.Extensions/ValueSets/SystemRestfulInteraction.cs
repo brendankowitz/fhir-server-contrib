@@ -1,18 +1,17 @@
 ﻿// -------------------------------------------------------------------------------------------------
-// Copyright (c) Microsoft Corporation. All rights reserved.
-// Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
+// Copyright (c) Microsoft Corporation.All rights reserved.
+// Licensed under the MIT License (MIT).See LICENSE in the repo root for license information.
 // -------------------------------------------------------------------------------------------------
 
-namespace Microsoft.Health.Fhir.Extensions.ValueSets
+namespace Microsoft.Health.Fhir.Extensions.ValueSets;
+
+public static class SystemRestfulInteraction
 {
-    public static class SystemRestfulInteraction
-    {
-        public const string Batch = "batch";
+    public const string Batch = "batch";
 
-        public const string HistorySystem = "history-system";
+    public const string HistorySystem = "history-system";
 
-        public const string SearchSystem = "search-system";
+    public const string SearchSystem = "search-system";
 
-        public const string Transaction = "transaction";
-    }
+    public const string Transaction = "transaction";
 }
